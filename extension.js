@@ -1,8 +1,19 @@
+/**
+ * 这是一个用于修改 Cursor 编辑器机器标识的 VSCode 插件
+ * 主要功能是修改 Cursor 的 telemetry.macMachineId，支持自定义 ID 或随机生成
+ */
+
 const vscode = require('vscode');
 const os = require('os');
 const path = require('path');
 const fs = require('fs');
 
+/**
+ * 获取 storage.json 文件的路径
+ * 优先使用用户在设置中指定的路径，如果没有指定或路径无效，则使用默认路径
+ * @returns {string} storage.json 文件的完整路径
+ * @throws {Error} 如果操作系统不支持则抛出错误
+ */
 function getStoragePath() {
     // 首先检查用户是否在设置中指定了路径
     const config = vscode.workspace.getConfiguration('cursorFakeMachine');
@@ -33,6 +44,12 @@ function getStoragePath() {
     return path.join(basePath, 'storage.json');
 }
 
+/**
+ * 修改 Cursor 的机器标识
+ * 读取 storage.json 文件，修改或添加 telemetry.macMachineId 字段
+ * @returns {Object} 包含操作结果的详细信息
+ * @throws {Error} 如果文件不存在或修改失败则抛出错误
+ */
 function modifyMacMachineId() {
     try {
         const storagePath = getStoragePath();
@@ -66,6 +83,10 @@ function modifyMacMachineId() {
     }
 }
 
+/**
+ * 生成随机的 UUID v4 格式的机器标识
+ * @returns {string} 生成的 UUID
+ */
 function generateRandomMachineId() {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
         const r = (Math.random() * 16) | 0;
@@ -74,6 +95,12 @@ function generateRandomMachineId() {
     });
 }
 
+/**
+ * 终止所有 Cursor 进程
+ * 根据不同操作系统使用不同的命令
+ * @returns {Promise} 返回一个 Promise，成功时 resolve，失败时 reject
+ * @throws {Error} 如果操作系统不支持则抛出错误
+ */
 async function killCursorProcesses() {
     const platform = os.platform();
     const exec = require('child_process').exec;
@@ -105,13 +132,20 @@ async function killCursorProcesses() {
     });
 } 
 
+/**
+ * 插件激活时调用的函数
+ * 注册命令并设置命令处理函数
+ * @param {vscode.ExtensionContext} context 插件上下文
+ */
 function activate(context) {
     let disposable = vscode.commands.registerCommand('cursor-fake-machine.cursor-fake-machine', async function () {
         try {
             const result = modifyMacMachineId();
 
+            // 显示成功消息
             vscode.window.showInformationMessage(`修改成功！\n路径: ${result.path}\n新的 machineId: ${result.newId}`);
 
+            // 询问是否要重启 Cursor
             const answer = await vscode.window.showWarningMessage(
                 '修改成功！是否要重启 Cursor 使更改生效？',
                 { modal: true },
@@ -146,6 +180,10 @@ function activate(context) {
     context.subscriptions.push(disposable);
 }
 
+/**
+ * 插件停用时调用的函数
+ * 目前为空，因为不需要清理资源
+ */
 function deactivate() {}
 
 module.exports = {
